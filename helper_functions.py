@@ -44,6 +44,10 @@ def load_images(folder):
         imgList.append(load_image(folder+f))
     return imgList
 
+def load_images_recursive(folder):
+    # do stuff -> https://stackoverflow.com/questions/44589915/read-images-from-multiple-folders-in-python?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+    pass
+
 
 def fig2data(fig): # from http://www.icare.univ-lille1.fr/wiki/index.php/How_to_convert_a_matplotlib_figure_to_a_numpy_array_or_a_PIL_image
     """

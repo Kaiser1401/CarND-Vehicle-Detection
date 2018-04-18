@@ -2,15 +2,14 @@
 from helper_functions import *
 # ---------------------------------
 
-C_DEBUG = False
+C_DEBUG = True
 VID_DEBUG = False
+WRITE_VIDEO = False
 
-_EXPORT_PICTURES_ = True
+_EXPORT_PICTURES_ = False
 
 
 def process_frame(im):
-
-
 
     if C_DEBUG:
         show_image(im)
@@ -30,7 +29,7 @@ def main():
     # main, do something
     global C_DEBUG # may be changed here
 
-    Video = True
+    Video = WRITE_VIDEO
 
     if _EXPORT_PICTURES_:
         setWriteAllImages(True)
@@ -40,8 +39,15 @@ def main():
     #C_DEBUG = True
     images = load_images('test_images/')
 
-    ## Preparation Done ---- Looping images / video from here on
 
+    ## train
+    #load training data
+    vehicles = load_images('training/vehicles')
+    non_vehicles = load_images('training/non-vehicles')
+
+
+
+    ## Preparation Done ---- Looping images / video from here on
     if Video:
         setResetAllways(False)
         project_video_output = "project_video_output.mp4"
