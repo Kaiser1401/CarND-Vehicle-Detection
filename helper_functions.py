@@ -156,6 +156,9 @@ def setResetAllways(value):
     global _RESET_ALLWAYS_
     _RESET_ALLWAYS_= value
 
+def getResetAllways():
+    return _RESET_ALLWAYS_
+
 def setWriteAllImages(value):
     global _WRITE_ALL_IMAGES_
     _WRITE_ALL_IMAGES_ = value
@@ -230,6 +233,8 @@ def extract_features(imgs, cspace='RGB', spatial_size=(32, 32),
     features = []
     # Iterate through the list of images
     for image in imgs:
+        #print(image.shape)
+
         # Read in each one by one
         #image = mpimg.imread(file)
         # apply color conversion if other than 'RGB'
@@ -305,10 +310,8 @@ def slide_window(img, x_start_stop=[None, None], y_start_stop=[None, None],
 # from/based on Lesson 0 #34
 def search_windows(img, windows, clf, scaler, color_space='RGB',
                    spatial_size=(32, 32), hist_bins=32,
-                   hist_range=(0, 256), orient=9,
-                   pix_per_cell=8, cell_per_block=2,
-                   hog_channel=0, spatial_feat=True,
-                   hist_feat=True, hog_feat=True):
+                   orient=9,
+                   pix_per_cell=8, cell_per_block=2 ):
     # 1) Create an empty list to receive positive detection windows
     on_windows = []
     # 2) Iterate over all windows in the list
@@ -317,17 +320,14 @@ def search_windows(img, windows, clf, scaler, color_space='RGB',
         test_img = cv2.resize(img[window[0][1]:window[1][1], window[0][0]:window[1][0]], (64, 64))
         # 4) Extract features for that window using single_img_features()
 
-        features = extract_features(test_img, cspace=color_space,
+        # make a list with one entry to reuse extract features function
+        single_im_list=[]
+        single_im_list.append(test_img)
+        features = extract_features(single_im_list, cspace=color_space,
                          spatial_size=spatial_size, hist_bins=hist_bins,
                          hog_orient=orient, hog_pix_per_cell=pix_per_cell,
-                         hog_cell_per_block=cell_per_block)[0]
+                         hog_cell_per_block=cell_per_block)
 
-        #features = single_img_features(test_img, color_space=color_space,
-        #                               spatial_size=spatial_size, hist_bins=hist_bins,
-        #                               orient=orient, pix_per_cell=pix_per_cell,
-        #                               cell_per_block=cell_per_block,
-        #                               hog_channel=hog_channel, spatial_feat=spatial_feat,
-        #                               hist_feat=hist_feat, hog_feat=hog_feat)
 
         # 5) Scale extracted features to be fed to classifier
         test_features = scaler.transform(np.array(features).reshape(1, -1))
@@ -341,15 +341,14 @@ def search_windows(img, windows, clf, scaler, color_space='RGB',
 
 # from/based on Lesson 0 #35
 def convert_color(img, conv='RGB2YCrCb'):
-    def convert_color(img, conv='RGB2YCrCb'):
-        if conv == 'RGB2YCrCb':
-            return cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
-        if conv == 'BGR2YCrCb':
-            return cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
-        if conv == 'RGB2LUV':
-            return cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
-        if conv == 'RGB2YUV':
-            return cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
+    if conv == 'RGB2YCrCb':
+        return cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
+    if conv == 'BGR2YCrCb':
+        return cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+    if conv == 'RGB2LUV':
+        return cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
+    if conv == 'RGB2YUV':
+        return cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
 
 # from/based on Lesson 0 #35
 def find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, cell_per_block, spatial_size, hist_bins):
@@ -358,7 +357,9 @@ def find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, ce
     img = img.astype(np.float32) / 255
 
     img_tosearch = img[ystart:ystop, :, :]
+
     ctrans_tosearch = convert_color(img_tosearch, conv='RGB2YUV')
+
     if scale != 1:
         imshape = ctrans_tosearch.shape
         ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1] / scale), np.int(imshape[0] / scale)))
@@ -430,3 +431,38 @@ def draw_boxes(img, bboxes, color=(0, 0, 255), thick=6):
         cv2.rectangle(imcopy, bbox[0], bbox[1], color, thick)
     # Return the image copy with boxes drawn
     return imcopy
+
+# from/based on Lesson 0 #37
+def add_heat(heatmap, bbox_list):
+    # Iterate through list of bboxes
+    for box in bbox_list:
+        # Add += 1 for all pixels inside each bbox
+        # Assuming each "box" takes the form ((x1, y1), (x2, y2))
+
+        heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
+
+    # Return updated heatmap
+    return heatmap  # Iterate through list of bboxes
+
+# from/based on Lesson 0 #37
+def apply_threshold(heatmap, threshold):
+    # Zero out pixels below the threshold
+    heatmap[heatmap <= threshold] = 0
+    # Return thresholded map
+    return heatmap
+
+# from/based on Lesson 0 #37
+def draw_labeled_bboxes(img, labels):
+    # Iterate through all detected cars
+    for car_number in range(1, labels[1] + 1):
+        # Find pixels with each car_number label value
+        nonzero = (labels[0] == car_number).nonzero()
+        # Identify x and y values of those pixels
+        nonzeroy = np.array(nonzero[0])
+        nonzerox = np.array(nonzero[1])
+        # Define a bounding box based on min/max x and y
+        bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
+        # Draw the box on the image
+        cv2.rectangle(img, bbox[0], bbox[1], (0, 0, 255), 6)
+    # Return the image
+    return img
