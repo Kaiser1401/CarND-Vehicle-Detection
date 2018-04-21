@@ -73,8 +73,14 @@ def process_frame(classifier,scaler,im):
     for ws in car_heatmap_buffer:
         heatmap = add_heat(heatmap,ws)
 
-    #if len(car_heatmap_buffer) > 1: # take a single frame as it is, apply thres otherwise
-    heatmap = apply_threshold(heatmap,1+len(car_heatmap_buffer)*heat_map_thres)
+    if C_DEBUG:
+        heat_img = np.clip(heatmap, 0, 255)
+        max=np.max(heat_img)
+        heat_img=heat_img*(255/max)
+        show_image(heat_img, True)
+
+    if len(car_heatmap_buffer) > 1: # take a single frame as it is, apply thres otherwise
+        heatmap = apply_threshold(heatmap,1+len(car_heatmap_buffer)*heat_map_thres)
 
     if C_DEBUG:
         # make images
@@ -94,6 +100,7 @@ def process_frame(classifier,scaler,im):
 
     return processed_img
 
+bFirst_images = True
 
 def train_classifier(path_images_vehicle,path_images_non_vehicle,bPersistant=False):
     data_file = "classifier.dat"
@@ -117,6 +124,7 @@ def train_classifier(path_images_vehicle,path_images_non_vehicle,bPersistant=Fal
     # get features
     # from/based on Lesson 0 #28
     print ('Extracting features ...')
+    # spatial, color, hog1,2,3
     features_vehicle = extract_features(images_vehicle, cspace=color_space,
                                         spatial_size=spatial_size, hist_bins=hist_bins,
                                         hog_orient=hog_orient, hog_pix_per_cell=hog_pix_per_cell,
@@ -128,6 +136,21 @@ def train_classifier(path_images_vehicle,path_images_non_vehicle,bPersistant=Fal
                                             hog_orient=hog_orient, hog_pix_per_cell=hog_pix_per_cell,
                                             hog_cell_per_block=hog_cell_per_block)
     print ('Got non-vehicle features.')
+
+    if C_DEBUG:
+        #get an image
+        global bFirst_images
+        if bFirst_images:
+            print(images_vehicle[0].shape)
+            idx_car = 6
+            idx_non = 0
+            img_car = get_hog_img_3_chan(convert_color(images_vehicle[idx_car],'RGB2YUV'),hog_orient,hog_pix_per_cell,hog_cell_per_block)
+            img_non_car = get_hog_img_3_chan(convert_color(images_non_vehicle[idx_non],'RGB2YUV'), hog_orient, hog_pix_per_cell, hog_cell_per_block)
+            show_image(images_vehicle[idx_car]*255)
+            show_image(img_car*255)
+            show_image(images_non_vehicle[idx_non]*255)
+            show_image(img_non_car*255)
+
 
     X = np.vstack((features_vehicle, features_non_vehicle)).astype(np.float64)
     # Define the labels vector. 1: car 0: no car
@@ -204,12 +227,6 @@ def main():
     root_path_non_vehicles = 'training/non-vehicles'
     classifier, scaler = train_classifier(root_path_vehicles,root_path_non_vehicles,C_PERSISTANT_CLASSIFIER_DATA)
 
-
-    #clear memory
-    vehicles = None
-    non_vehicles = None
-    gc.collect()
-
     # define partial function for arguments
     single_param_process_frame = partial(process_frame,classifier,scaler)
 
@@ -217,12 +234,14 @@ def main():
     if Video:
         print("Processing video ...")
         setResetAllways(False)
+        setNoShow(True)
         project_video_output = "project_video_output.mp4"
         project_video_input = VideoFileClip("project_video.mp4")
         #project_video_input = VideoFileClip("test_video.mp4")
 
         processed_project_video = project_video_input.fl_image(single_param_process_frame)
         processed_project_video.write_videofile(project_video_output, audio=False)
+        setNoShow(False)
 
     else:
         print("Processing single images ...")

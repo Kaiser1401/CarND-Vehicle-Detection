@@ -17,6 +17,7 @@ _RESET_ALLWAYS_ = False
 _WRITE_ALL_IMAGES_ = False
 _WRITE_IMAGE_BASE_NAME_ = "output_images/i_"
 _IMG_FILE_COUNTER_ = 0
+_NO_SHOW_ = False
 
 def save_object(obj,filename):
     with open(filename, 'wb') as output:
@@ -140,6 +141,9 @@ def show_image(image,bBW=False):
         _IMG_FILE_COUNTER_ += 1
         return
 
+    if _NO_SHOW_:
+        return
+
     if bBW:
         plt.imshow(image,cmap='gray')
     else:
@@ -155,6 +159,10 @@ _median_idx  = {} #place to hold old values for medians
 def setResetAllways(value):
     global _RESET_ALLWAYS_
     _RESET_ALLWAYS_= value
+
+def setNoShow(value):
+    global _NO_SHOW_
+    _NO_SHOW_= value
 
 def getResetAllways():
     return _RESET_ALLWAYS_
@@ -466,3 +474,18 @@ def draw_labeled_bboxes(img, labels):
         cv2.rectangle(img, bbox[0], bbox[1], (0, 0, 255), 6)
     # Return the image
     return img
+
+#images_vehicle[0],hog_orient,hog_pix_per_cell,hog_cell_per_block,vis=True
+def get_hog_img_3_chan(img,orient,pix,cell):
+    ch1 = img[:, :, 0]
+    ch2 = img[:, :, 1]
+    ch3 = img[:, :, 2]
+    tmp, hog1 = get_hog_features(ch1, orient, pix, cell, vis=True)
+    tmp, hog2 = get_hog_features(ch2, orient, pix, cell, vis=True)
+    tmp, hog3 = get_hog_features(ch3, orient, pix, cell, vis=True)
+    #print (hog1.shape)
+    hog_img = np.vstack((hog1, hog2, hog3))
+    max=np.max(hog_img)
+    hog_img=hog_img*(1.0/max).astype(np.float32)
+    print (hog_img.shape)
+    return hog_img
